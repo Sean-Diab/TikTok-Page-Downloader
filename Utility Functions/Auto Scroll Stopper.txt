@@ -1,0 +1,118 @@
+Collects links of TikTok posts, but stops when you press 's' (while the page is selected). Pauses and resumes when you press 'p'. This way you can stop it from scrolling to the absolute bottom of the page, so you can collect however many links you want. Especially useful for updating your collection.
+
+(async () => {
+  // --- state ---
+  const seen = new Set();
+  const out = [];
+  let stop = false;
+  let paused = false;
+
+  // --- config ---
+  const stepPx = Math.floor(window.innerHeight * 0.85); // smaller steps
+  const pauseMs = 1000;          // wait per cycle to let items render/fetch
+  const idleThreshold = 6;       // ~6 cycles of no growth
+  const maxCycles = 20000;       // hard cap
+
+  // --- UI overlay ---
+  const ui = document.createElement("div");
+  ui.id = "tt-collector-ui";
+  ui.style.cssText = `
+    position:fixed; top:12px; right:12px; z-index:2147483647;
+    background:#111; color:#fff; padding:10px 12px; border-radius:8px;
+    font: 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    box-shadow:0 6px 20px rgba(0,0,0,.35); opacity:.95;
+  `;
+  ui.innerHTML = `
+    <div style="font-weight:600; margin-bottom:6px;">TikTok Link Collector</div>
+    <div id="tt-collector-stats">0 links</div>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <button id="tt-pause" style="padding:6px 10px; border:0; border-radius:6px; cursor:pointer;">Pause</button>
+      <button id="tt-stop"  style="padding:6px 10px; border:0; border-radius:6px; cursor:pointer; background:#e11d48; color:#fff;">Stop & Save</button>
+    </div>
+    <div style="margin-top:6px; font-size:12px; opacity:.85;">Hotkeys: <b>P</b> pause/resume • <b>S</b> stop & save</div>
+  `;
+  document.body.appendChild(ui);
+  const statsEl = ui.querySelector("#tt-collector-stats");
+  const pauseBtn = ui.querySelector("#tt-pause");
+  ui.querySelector("#tt-stop").onclick = () => (stop = true);
+  pauseBtn.onclick = () => {
+    paused = !paused;
+    pauseBtn.textContent = paused ? "Resume" : "Pause";
+  };
+
+  const onKey = (e) => {
+    const k = e.key.toLowerCase();
+    if (k === "s") stop = true;              // Stop & Save
+    if (k === "p") {                          // Pause/Resume
+      paused = !paused;
+      pauseBtn.textContent = paused ? "Resume" : "Pause";
+    }
+  };
+  window.addEventListener("keydown", onKey);
+
+  // --- helpers ---
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const atBottom = () =>
+    window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
+
+  const collect = () => {
+    const anchors = document.querySelectorAll('a[href*="/video/"], a[href*="/photo/"]');
+    for (const a of anchors) {
+      try {
+        const u = new URL(a.href, location.href);
+        u.search = "";
+        u.hash = "";
+        const url = u.toString();
+        if (!seen.has(url)) {
+          seen.add(url);
+          out.push(url);
+        }
+      } catch {}
+    }
+    statsEl.textContent = `${seen.size} links • y=${Math.round(window.scrollY)} • ${new Date().toLocaleTimeString()}`;
+  };
+
+  // --- main loop ---
+  let lastCount = 0;
+  let idle = 0;
+
+  for (let cycle = 0; cycle < maxCycles && !stop; cycle++) {
+    collect();
+
+    // Pause loop if requested
+    while (paused && !stop) await sleep(200);
+    if (stop) break;
+
+    // Scroll in small steps (so you can stop before the very bottom)
+    if (!atBottom()) {
+      window.scrollBy(0, stepPx);
+    }
+
+    await sleep(pauseMs);
+    collect();
+
+    if (seen.size > lastCount) {
+      lastCount = seen.size;
+      idle = 0;
+    } else {
+      idle++;
+    }
+    if (idle >= idleThreshold || atBottom()) break; // natural end
+  }
+
+  // --- cleanup & save ---
+  window.removeEventListener("keydown", onKey);
+  ui.remove();
+
+  // Oldest first
+  const reversed = out.slice().reverse();
+
+  const blob = new Blob([reversed.join("\n") + "\n"], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "links.txt";
+  a.click();
+  URL.revokeObjectURL(a.href);
+
+  console.log(`Saved ${reversed.length} unique links (oldest first) to links.txt`);
+})();
