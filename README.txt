@@ -1,6 +1,6 @@
 Downloads all posts on a TikTok page and stream videos locally on a neat HTML file! (Comes with a lot of extra utility functions)
 
-Important information gets deleted and censored online. Do not trust that your videos will be safe. Download them locally.
+Important information gets deleted and censored online. Do not trust that your videos will be safe.
 
 How to run:
 
@@ -73,5 +73,6 @@ How to run:
 5. Run build_archive.py
 
 You can also put a new links.txt (can even include old links) in the same directory and run as well, will append extra files on top and update the HTML file!
+
 
 Now you can use the HTML file to look at the posts that are saved locally on your computer! Enjoy!
