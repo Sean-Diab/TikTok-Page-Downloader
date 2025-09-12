@@ -1,6 +1,6 @@
 Downloads all posts on a TikTok page and streams them locally from an HTML file! (Comes with a lot of extra utility functions)
 
-Important information gets deleted and censored online. Do not trust that your videos will be safe.
+Important information gets deleted and censored online. Do not trust that your data will be safe.
 
 How to run:
 
@@ -76,5 +76,6 @@ You can also put a new links.txt (can even include old links) in the same direct
 
 
 Now you can use the HTML file to look at the posts that are saved locally on your computer! Enjoy!
+
 
 
